@@ -9,7 +9,7 @@ SDL3
 Windows 10+
 (linux precisa ajustar umas partes do codigo, não é muito complicado)
 
-# Funcionalidade:
+# Funcionalidades:
 Servidor web rodando em 8080
 Distancia
 Linhas
