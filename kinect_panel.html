@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sandbox Kinect</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #111;
+            color: #eee;
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h3 {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 0 16px 0;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 480px;
+            background: #1b1b1b;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 0 10px #000;
+        }
+
+        .row {
+            margin-top: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .value {
+            font-weight: bold;
+            margin-left: 4px;
+        }
+
+        input[type=range] {
+            width: 100%;
+        }
+
+        input[type=checkbox] {
+            transform: scale(1.3);
+            margin-right: 8px;
+        }
+
+        small {
+            color: #aaa;
+            font-size: 0.8rem;
+        }
+
+        .status {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: #8f8;
+        }
+    </style>
+</head>
+<body>
+    <h3>Sandbox Kinect - Painel Web</h3>
+
+    <div class="card">
+        <div class="row">
+            <label>
+                Distancia minima (mm)
+                <span id="minDepthVal" class="value"></span>
+            </label>
+            <input id="minDepth" type="range" min="300" max="2000" step="10">
+        </div>
+
+        <div class="row">
+            <label>
+                Distancia maxima (mm)
+                <span id="maxDepthVal" class="value"></span>
+            </label>
+            <input id="maxDepth" type="range" min="800" max="4000" step="10">
+        </div>
+
+        <div class="row">
+            <label>
+                Passo de contorno (mm)
+                <span id="contourStepVal" class="value"></span>
+            </label>
+            <input id="contourStep" type="range" min="1" max="100" step="1">
+        </div>
+
+        <div class="row">
+            <label>
+                Nivel da agua (mm)
+                <span id="waterLevelVal" class="value"></span>
+            </label>
+            <input id="waterLevel" type="range" min="400" max="3000" step="10">
+        </div>
+
+        <div class="row">
+            <label>
+                <input id="waterEnabled" type="checkbox">
+                Agua ligada
+            </label>
+        </div>
+
+        <div class="status" id="statusText"></div>
+
+        <div style="margin-top:12px;">
+            <small>
+                Este painel controla o programa rodando no PC.
+                Certifique-se de que o Kinect esta ativo na mesma rede.
+            </small>
+        </div>
+    </div>
+
+    <script>
+    const minDepthEl    = document.getElementById('minDepth');
+    const maxDepthEl    = document.getElementById('maxDepth');
+    const contourEl     = document.getElementById('contourStep');
+    const waterLevelEl  = document.getElementById('waterLevel');
+    const waterCheckEl  = document.getElementById('waterEnabled');
+    const statusText    = document.getElementById('statusText');
+
+    function atualizaLabels() {
+      document.getElementById('minDepthVal').textContent   = minDepthEl.value   + ' mm';
+      document.getElementById('maxDepthVal').textContent   = maxDepthEl.value   + ' mm';
+      document.getElementById('contourStepVal').textContent= contourEl.value    + ' mm';
+      document.getElementById('waterLevelVal').textContent = waterLevelEl.value + ' mm';
+    }
+
+    let timer = null;
+    function enviaAtualizacaoDebounced() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(enviaAtualizacao, 120); 
+    }
+
+    async function enviaAtualizacao() {
+      atualizaLabels();
+      const params = new URLSearchParams({
+        minDepth:    minDepthEl.value,
+        maxDepth:    maxDepthEl.value,
+        contourStep: contourEl.value,
+        waterLevel:  waterLevelEl.value,
+        waterEnabled: waterCheckEl.checked ? '1' : '0'
+      });
+      try {
+        const r = await fetch('/set?' + params.toString());
+        if (r.ok) {
+          statusText.textContent = 'Parametros enviados';
+        } else {
+          statusText.textContent = 'Erro ao enviar parametros';
+        }
+      } catch (e) {
+        statusText.textContent = 'Falha de conexao';
+        console.error(e);
+      }
+    }
+
+    async function carregarEstado() {
+      try {
+        const r = await fetch('/state');
+        const j = await r.json();
+        minDepthEl.value   = j.minDepth;
+        maxDepthEl.value   = j.maxDepth;
+        contourEl.value    = j.contourStep;
+        waterLevelEl.value = j.waterLevel;
+        waterCheckEl.checked = !!j.waterEnabled;
+        atualizaLabels();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    ['input', 'change'].forEach(ev => {
+      minDepthEl.addEventListener(ev, enviaAtualizacaoDebounced);
+      maxDepthEl.addEventListener(ev, enviaAtualizacaoDebounced);
+      contourEl.addEventListener(ev, enviaAtualizacaoDebounced);
+      waterLevelEl.addEventListener(ev, enviaAtualizacaoDebounced);
+      waterCheckEl.addEventListener(ev, enviaAtualizacaoDebounced);
+    });
+
+    carregarEstado();
+    </script>
+</body>
+</html>
